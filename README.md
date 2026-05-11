@@ -300,6 +300,39 @@ This is useful for:
 - Air-gapped environments
 - Modifying profiles before installation
 
+### Update from Remote
+
+Keep your `.opencode` installation in sync with the upstream repository:
+
+```bash
+# Update from default repository (Treon-Studio/agents)
+bash install.sh --update
+
+# Preview changes without applying
+bash install.sh --update --dry-run
+
+# Update with a custom source repository
+bash install.sh --update --source https://github.com/owner/repo
+
+# Update with automatic backup of overwritten files
+bash install.sh --update --backup-dir ~/.opencode_backups
+```
+
+**How it works:**
+1. Downloads latest archive from repository
+2. Computes SHA256 checksums for both local and remote files
+3. Compares and determines which files need updating
+4. Shows change summary (files to update, add, or skip)
+5. Applies changes with optional backup
+
+**Options:**
+| Option | Description |
+|--------|-------------|
+| `--update` | Run update mode |
+| `--dry-run` | Preview changes without applying |
+| `--source URL` | Use custom repository URL |
+| `--backup-dir PATH` | Backup directory for overwritten files |
+
 ---
 
 ## Configuration

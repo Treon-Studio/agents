@@ -1,0 +1,41 @@
+name: Discord Notification
+
+on:
+  push:
+    branches:
+      - main
+  create:
+    ref_type: branch
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup yq
+        run: |
+          wget https://github.com/mikefarah/yq/releases/download/v4.35.2/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+
+      - name: Send notification - New branch created
+        if: github.event_name == 'create' && github.event.ref_type == 'branch'
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -d '{"embeds": [{"title": "🌿 New Branch Created", "description": "Branch: `${{ github.event.ref }}`", "color": 3447003}]}' \
+          https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
+
+      - name: Send notification - Push to main
+        if: github.ref == 'refs/heads/main'
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -d '{"embeds": [{"title": "📦 Push to Main", "description": "Commit: `${{ github.commit_message }}`", "color": 3066993}]}' \
+          https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
+
+      - name: Send notification - Push to branch
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -d '{"embeds": [{"title": "📝 Push to Branch", "description": "Branch: `${{ github.ref_name }}`\nCommit: `${{ github.commit_message }}`", "color": 3447003}]}' \
+          https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
