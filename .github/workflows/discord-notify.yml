@@ -66,42 +66,33 @@ jobs:
           COMMIT_SHA="${{ github.sha }}"
           SKILLS_JSON="${{ steps.skills.outputs.skills_json }}"
 
-          # Escape special characters using different delimiter
-          ESCAPED_MSG=$(echo "$MSG" | sed 's|\\|\\\\|g' | sed 's|"|\\"|g' | sed ':a;N;$!ba;s|\n|\\n|g')
-          ESCAPED_AUTHOR=$(echo "$AUTHOR" | sed 's|\\|\\\\|g' | sed 's|"|\\"|g')
-          ESCAPED_REPO=$(echo "$REPO" | sed 's|\\|\\\\|g' | sed 's|"|\\"|g')
-
-          # Create JSON payload
-          cat > payload.json << 'JSONEOF'
-          {
-            "embeds": [{
-              "title": "🆕 New Skill Added",
-              "color": 3447003,
-              "description": "A new skill has been added to the repository",
-              "fields": [
-                {"name": "Repository", "value": "REPO_VAL", "inline": true},
-                {"name": "Author", "value": "AUTHOR_VAL", "inline": true},
-                {"name": "Skill(s) Added", "value": "SKILLS_VAL"},
-                {"name": "Commit Message", "value": "MSG_VAL"}
-              ],
-              "url": "https://github.com/REPO_VAL/commit/SHA_VAL",
-              "footer": {"text": "OpenAgents CI"},
-              "timestamp": "TS_VAL"
-            }]
-          }
-          JSONEOF
-
-          sed -i "s/REPO_VAL/$ESCAPED_REPO/g" payload.json
-          sed -i "s/AUTHOR_VAL/$ESCAPED_AUTHOR/g" payload.json
-          sed -i "s/SKILLS_VAL/$SKILLS_JSON/g" payload.json
-          sed -i "s/MSG_VAL/$ESCAPED_MSG/g" payload.json
-          sed -i "s/SHA_VAL/$COMMIT_SHA/g" payload.json
-          sed -i "s/TS_VAL/$TIMESTAMP/g" payload.json
-
-          curl -X POST -H "Content-Type: application/json" -d @payload.json \
+          # Use jq to build JSON payload safely
+          curl -X POST -H "Content-Type: application/json" \
+          -d "$(jq -n \
+            --arg title "🆕 New Skill Added" \
+            --arg repo "$REPO" \
+            --arg author "$AUTHOR" \
+            --arg skills "$SKILLS_JSON" \
+            --arg msg "$MSG" \
+            --arg ts "$TIMESTAMP" \
+            --arg url "https://github.com/$REPO/commit/$COMMIT_SHA" \
+            '{
+              embeds: [{
+                title: $title,
+                description: "A new skill has been added to the repository",
+                color: 3447003,
+                fields: [
+                  {name: "Repository", value: $repo, inline: true},
+                  {name: "Author", value: $author, inline: true},
+                  {name: "Skill(s) Added", value: $skills},
+                  {name: "Commit Message", value: $msg}
+                ],
+                url: $url,
+                footer: {text: "OpenAgents CI"},
+                timestamp: $ts
+              }]
+            }')" \
           https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
-
-          rm payload.json
 
       - name: Send notification - Push to main (non-skill)
         if: github.ref == 'refs/heads/main' && steps.skills.outputs.has_skills == 'false'
@@ -109,14 +100,14 @@ jobs:
           MSG=$(git log -1 --format='%s')
           AUTHOR=$(git log -1 --format='%an')
           TIMESTAMP=$(git log -1 --format='%cI')
-          # Use jq to build JSON safely
+          # Use jq to build JSON safely with proper escaping
           curl -X POST -H "Content-Type: application/json" \
           -d "$(jq -n \
             --arg title "📦 Push to Main" \
-            --arg desc "Commit: $MSG\nAuthor: $AUTHOR" \
-            --arg color "3066993" \
+            --arg msg "$MSG" \
+            --arg author "$AUTHOR" \
             --arg ts "$TIMESTAMP" \
-            '{embeds: [{title: $title, description: $desc, color: ($color | tonumber), timestamp: $ts}]}')" \
+            '{embeds: [{title: $title, description: "Commit: \($msg)\nAuthor: \($author)", color: 3066993, timestamp: $ts}]}')" \
           https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
 
       - name: Send notification - Push to branch
@@ -126,12 +117,13 @@ jobs:
           AUTHOR=$(git log -1 --format='%an')
           TIMESTAMP=$(git log -1 --format='%cI')
           BRANCH="${{ github.ref_name }}"
-          # Use jq to build JSON safely
+          # Use jq to build JSON safely with proper escaping
           curl -X POST -H "Content-Type: application/json" \
           -d "$(jq -n \
             --arg title "📝 Push to Branch" \
-            --arg desc "Branch: \`$BRANCH\`\nCommit: $MSG\nAuthor: $AUTHOR" \
-            --arg color "3447003" \
+            --arg branch "$BRANCH" \
+            --arg msg "$MSG" \
+            --arg author "$AUTHOR" \
             --arg ts "$TIMESTAMP" \
-            '{embeds: [{title: $title, description: $desc, color: ($color | tonumber), timestamp: $ts}]}')" \
+            '{embeds: [{title: $title, description: "Branch: \($branch)\nCommit: \($msg)\nAuthor: \($author)", color: 3447003, timestamp: $ts}]}')" \
           https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
