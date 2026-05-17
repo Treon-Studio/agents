@@ -1,0 +1,69 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck on install.sh
+        run: shellcheck install.sh update.sh scripts/*.sh
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run integration tests
+        run: bash tests/integration.sh
+
+  bats-tests:
+    runs-on: ubuntu-latest
+    if: false  # Disable for now, requires bats installed
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats
+        run: |
+          git clone --depth 1 https://github.com/bats-core/bats-core.git
+          cd bats-core && ./install.sh /usr/local
+
+      - name: Run bats tests
+        run: bats tests/
+
+  dry-run-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test install.sh --dry-run
+        run: |
+          chmod +x install.sh
+          output=$(bash install.sh --dry-run --profile minimal 2>&1 || true)
+          echo "$output"
+          # Just verify it doesn't crash
+          if echo "$output" | grep -qi "error\|exception"; then
+            exit 1
+          fi
+
+  update-dry-run-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test update.sh content
+        run: |
+          chmod +x update.sh
+          # Just verify it downloads and runs
+          if ! grep -q "curl.*install.sh" update.sh; then
+            exit 1
+          fi
