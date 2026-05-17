@@ -10,6 +10,7 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    if: ${{ secrets.DISCORD_WEBHOOK != '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,40 +23,56 @@ jobs:
       - name: Detect new skills
         id: skills
         run: |
-          # Get commits that modified skills
-          SKILLS_COMMITS=$(git log --oneline --format="%H %s" -- '.opencode/skills/**' | tail -1)
-          
-          if [ -z "$SKILLS_COMMITS" ]; then
+          # Get list of skills that were modified
+          SKILLS_CHANGED=$(git diff --name-only HEAD~1 HEAD -- '.opencode/skills/**' 2>/dev/null | grep -v '\.gitignore' || true)
+
+          if [ -z "$SKILLS_CHANGED" ]; then
             echo "No skills changed"
             echo "skills_json=[]" >> $GITHUB_OUTPUT
-            echo "commit_count=0" >> $GITHUB_OUTPUT
+            echo "has_skills=false" >> $GITHUB_OUTPUT
           else
-            # Get list of skills with commit messages
-            SKILLS_JSON=$(git log --oneline --format='{"name":"%s","sha":"%h","url":"https://github.com/${{ github.repository }}/commit/%H"}' -- '.opencode/skills/**' | jq -s '.' | jq '[.[] | {name: .name, sha: .sha, url: .url}]')
+            echo "Skills changed:"
+            echo "$SKILLS_CHANGED"
+
+            # Build JSON array of skill names
+            SKILLS_JSON="["
+            FIRST=true
+            for skill in $SKILLS_CHANGED; do
+              SKILL_NAME=$(echo "$skill" | sed 's|.opencode/skills/||' | sed 's|/SKILL.md||' | sed 's|/.*||')
+              if [ "$FIRST" = true ]; then
+                FIRST=false
+              else
+                SKILLS_JSON="$SKILLS_JSON,"
+              fi
+              SKILLS_JSON="$SKILLS_JSON\"$SKILL_NAME\""
+            done
+            SKILLS_JSON="$SKILLS_JSON]"
             echo "skills_json=$SKILLS_JSON" >> $GITHUB_OUTPUT
-            echo "commit_count=$(echo "$SKILLS_JSON" | jq length)" >> $GITHUB_OUTPUT
-            
-            # Get author info from latest commit
-            AUTHOR_NAME=$(git log -1 --format='%an')
-            AUTHOR_EMAIL=$(git log -1 --format='%ae')
-            echo "author_name=$AUTHOR_NAME" >> $GITHUB_OUTPUT
-            
-            echo "Detected $(echo $SKILLS_JSON | jq length) skill(s) changed"
+            echo "has_skills=true" >> $GITHUB_OUTPUT
+
+            echo "Detected skill changes"
           fi
 
+      - name: Get commit info
+        if: steps.skills.outputs.has_skills == 'true'
+        run: |
+          echo "Commit message: ${{ github.event.head_commit.message }}"
+          echo "Author: ${{ github.event.head_commit.author.name }}"
+          echo "SHA: ${{ github.sha }}"
+
       - name: Send Discord notification
-        if: steps.skills.outputs.commit_count != '0'
+        if: steps.skills.outputs.has_skills == 'true'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           SKILLS_JSON: ${{ steps.skills.outputs.skills_json }}
-          AUTHOR_NAME: ${{ steps.skills.outputs.author_name }}
+          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
           REPO: ${{ github.repository }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_SHA: ${{ github.sha }}
+          TIMESTAMP: ${{ github.event.head_commit.timestamp }}
         run: |
-          COMMIT_COUNT=${{ steps.skills.outputs.commit_count }}
-          
-          # Build skill list for display
-          SKILL_NAMES=$(echo '$SKILLS_JSON' | jq -r '.[] | "- \\(.\"name\") (\\(.sha))"' | sed 's/"/\\"/g')
-          
+          echo "Building Discord notification..."
+
           # Build Discord embed
           PAYLOAD=$(cat <<EOF
           {
@@ -76,26 +93,31 @@ jobs:
                 },
                 {
                   "name": "Skill(s) Added",
-                  "value": $SKILL_NAMES
+                  "value": $SKILLS_JSON
                 },
                 {
-                  "name": "Total Commit(s)",
-                  "value": "$COMMIT_COUNT",
-                  "inline": true
+                  "name": "Commit Message",
+                  "value": "$COMMIT_MSG"
                 }
               ],
+              "url": "https://github.com/$REPO/commit/$COMMIT_SHA",
               "footer": {
                 "text": "OpenAgents CI"
               },
-              "timestamp": "${{ github.event.head_commit.timestamp }}"
+              "timestamp": "$TIMESTAMP"
             }]
           }
           EOF)
-          
-          response=$(curl -s -w "%{http_code}" -o /dev/null -H "Content-Type: application/json" -d "$PAYLOAD" $DISCORD_WEBHOOK)
+
+          echo "Sending notification..."
+          response=$(curl -s -w "%{http_code}" -o /dev/null -X POST \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK")
+
           if [ "$response" = "204" ] || [ "$response" = "200" ]; then
-            echo "Discord notification sent successfully"
+            echo "✓ Discord notification sent successfully"
           else
-            echo "Failed to send Discord notification (HTTP $response)"
+            echo "✗ Failed to send Discord notification (HTTP $response)"
             exit 1
           fi
