@@ -52,25 +52,31 @@ jobs:
       - name: Get commit info
         if: steps.skills.outputs.has_skills == 'true'
         run: |
-          echo "Commit message: ${{ github.event.head_commit.message }}"
-          echo "Author: ${{ github.event.head_commit.author.name }}"
+          echo "Commit message: $(git log -1 --format='%s')"
+          echo "Author: $(git log -1 --format='%an')"
           echo "SHA: ${{ github.sha }}"
+          echo "Full SHA: $(git rev-parse HEAD)"
 
       - name: Send Discord notification
         if: steps.skills.outputs.has_skills == 'true'
         env:
           DISCORD_WEBHOOK: https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
           SKILLS_JSON: ${{ steps.skills.outputs.skills_json }}
-          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
           REPO: ${{ github.repository }}
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
           COMMIT_SHA: ${{ github.sha }}
-          TIMESTAMP: ${{ github.event.head_commit.timestamp }}
         run: |
           echo "Building Discord notification..."
 
+          # Get commit info from git (more reliable than GitHub context)
+          AUTHOR_NAME=$(git log -1 --format='%an')
+          COMMIT_MSG=$(git log -1 --format='%s')
+          TIMESTAMP=$(git log -1 --format='%cI')
+          COMMIT_URL="https://github.com/$REPO/commit/$COMMIT_SHA"
+
+          echo "Commit info - Author: $AUTHOR_NAME, Message: $COMMIT_MSG"
+
           # Escape special characters for JSON
-          ESCAPED_MSG=$(echo "$COMMIT_MSG" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/$/\\n/g' | tr -d '\n')
+          ESCAPED_MSG=$(echo "$COMMIT_MSG" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
           ESCAPED_AUTHOR=$(echo "$AUTHOR_NAME" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
           ESCAPED_REPO=$(echo "$REPO" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
 
@@ -100,7 +106,6 @@ jobs:
           sed -i "s/SKILLS_VAL/$SKILLS_JSON/g" payload.json
           sed -i "s/MSG_VAL/$ESCAPED_MSG/g" payload.json
           sed -i "s/SHA_VAL/$COMMIT_SHA/g" payload.json
-          sed -i "s/TS_VAL/$TIMESTAMP/g" payload.json
 
           echo "Sending notification..."
           response=$(curl -s -w "%{http_code}" -o /dev/null -X POST \
