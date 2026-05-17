@@ -16,9 +16,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
       - name: Detect new skills
         id: skills
         run: |
@@ -72,47 +69,46 @@ jobs:
         run: |
           echo "Building Discord notification..."
 
-          # Build Discord embed
-          PAYLOAD=$(cat <<EOF
+          # Escape special characters for JSON
+          ESCAPED_MSG=$(echo "$COMMIT_MSG" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/$/\\n/g' | tr -d '\n')
+          ESCAPED_AUTHOR=$(echo "$AUTHOR_NAME" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+          ESCAPED_REPO=$(echo "$REPO" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+
+          # Create JSON payload file
+          cat > payload.json << 'JSONEOF'
           {
             "embeds": [{
               "title": "🆕 New Skill Added",
               "color": 3447003,
               "description": "A new skill has been added to the repository",
               "fields": [
-                {
-                  "name": "Repository",
-                  "value": "$REPO",
-                  "inline": true
-                },
-                {
-                  "name": "Author",
-                  "value": "$AUTHOR_NAME",
-                  "inline": true
-                },
-                {
-                  "name": "Skill(s) Added",
-                  "value": $SKILLS_JSON
-                },
-                {
-                  "name": "Commit Message",
-                  "value": "$COMMIT_MSG"
-                }
+                {"name": "Repository", "value": "REPO_VAL", "inline": true},
+                {"name": "Author", "value": "AUTHOR_VAL", "inline": true},
+                {"name": "Skill(s) Added", "value": "SKILLS_VAL"},
+                {"name": "Commit Message", "value": "MSG_VAL"}
               ],
-              "url": "https://github.com/$REPO/commit/$COMMIT_SHA",
-              "footer": {
-                "text": "OpenAgents CI"
-              },
-              "timestamp": "$TIMESTAMP"
+              "url": "https://github.com/REPO_VAL/commit/SHA_VAL",
+              "footer": {"text": "OpenAgents CI"},
+              "timestamp": "TS_VAL"
             }]
           }
-          EOF)
+          JSONEOF
+
+          # Replace placeholders
+          sed -i "s/REPO_VAL/$ESCAPED_REPO/g" payload.json
+          sed -i "s/AUTHOR_VAL/$ESCAPED_AUTHOR/g" payload.json
+          sed -i "s/SKILLS_VAL/$SKILLS_JSON/g" payload.json
+          sed -i "s/MSG_VAL/$ESCAPED_MSG/g" payload.json
+          sed -i "s/SHA_VAL/$COMMIT_SHA/g" payload.json
+          sed -i "s/TS_VAL/$TIMESTAMP/g" payload.json
 
           echo "Sending notification..."
           response=$(curl -s -w "%{http_code}" -o /dev/null -X POST \
             -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
+            -d @payload.json \
             "$DISCORD_WEBHOOK")
+
+          rm payload.json
 
           if [ "$response" = "204" ] || [ "$response" = "200" ]; then
             echo "✓ Discord notification sent successfully"
