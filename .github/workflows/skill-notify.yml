@@ -63,7 +63,7 @@ jobs:
       - name: Send Discord notification
         if: steps.skills.outputs.has_skills == 'true'
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK: https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
           SKILLS_JSON: ${{ steps.skills.outputs.skills_json }}
           AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
           REPO: ${{ github.repository }}
