@@ -1,0 +1,92 @@
+name: Config Sync Check
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Daily at 8 AM
+  workflow_dispatch:
+
+jobs:
+  check-updates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Clone source repo
+        run: |
+          git clone --depth 1 https://github.com/Treon-Studio/agents.git .opencode/source
+
+      - name: Check for updates
+        id: check
+        run: |
+          cd .opencode/source
+          git fetch origin main
+          REMOTE=$(git rev-parse origin/main)
+          cd ../..
+
+          # Get current synced commit from last sync marker
+          if [ -f .opencode/sync/last-sync ]; then
+            LAST_SYNC=$(cat .opencode/sync/last-sync)
+          else
+            LAST_SYNC=$(git rev-parse HEAD)
+          fi
+
+          BEHIND=$(git -C .opencode/source rev-list "$LAST_SYNC..$REMOTE" --count)
+          COMMITS=$(git -C .opencode/source log --oneline "$LAST_SYNC..$REMOTE" | head -20)
+
+          echo "Commits behind: $BEHIND"
+          echo "commits=$BEHIND" >> $GITHUB_OUTPUT
+          echo "details=$COMMITS" >> $GITHUB_OUTPUT
+
+          if [ "$BEHIND" -gt 0 ]; then
+            echo "update_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "update_available=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create/update PR with new content
+        if: steps.check.outputs.update_available == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd .opencode/source
+          REMOTE=$(git rev-parse origin/main)
+          cd ../..
+
+          # Copy files
+          mkdir -p .opencode/sync
+          echo "$REMOTE" > .opencode/sync/last-sync
+
+          # Stage changes
+          git add -A
+
+          # Check if there are changes
+          if git diff --staged --quiet; then
+            echo "No actual file changes to sync"
+            exit 0
+          fi
+
+          # Create or update PR
+          BRANCH="chore/sync-config-from-upstream"
+
+          git checkout -b "$BRANCH" 2>/dev/null || git checkout "$BRANCH"
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+          git commit -m "chore: sync config from upstream
+
+          Updates available from Treon-Studio/agents
+
+          Commits:
+          ${{ steps.check.outputs.details }}"
+
+          git push -u origin "$BRANCH" -f
+
+          gh pr create --title "🔄 Sync config from upstream" \
+            --body "Sync configuration from [Treon-Studio/agents](https://github.com/Treon-Studio/agents)
+
+            **Commits behind:** ${{ steps.check.outputs.commits }}
+
+            Please review and merge." \
+            --base main || echo "PR creation skipped (may already exist or no permissions)"

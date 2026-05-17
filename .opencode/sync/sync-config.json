@@ -1,0 +1,15 @@
+{
+  "source": "https://github.com/Treon-Studio/agents.git",
+  "prefix": ".opencode",
+  "sync": [
+    "skills",
+    "agents.json",
+    "workflows/discord-notify.yml"
+  ],
+  "exclude": [
+    "skills/turborepo/references/**",
+    "skills/nuxt/references/**"
+  ],
+  "branch": "main",
+  "updateStrategy": "merge"
+}
