@@ -29,13 +29,15 @@ jobs:
       - name: Send notification - Push to main
         if: github.ref == 'refs/heads/main'
         run: |
+          MSG=$(git log -1 --format='%s')
           curl -X POST -H "Content-Type: application/json" \
-          -d '{"embeds": [{"title": "📦 Push to Main", "description": "Commit: `${{ github.commit_message }}`", "color": 3066993}]}' \
+          -d "{\"embeds\": [{\"title\": \"📦 Push to Main\", \"description\": \"Commit: \\\"$MSG\\\"\", \"color\": 3066993}]}" \
           https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
 
       - name: Send notification - Push to branch
         if: github.event_name == 'push' && github.ref != 'refs/heads/main'
         run: |
+          MSG=$(git log -1 --format='%s')
           curl -X POST -H "Content-Type: application/json" \
-          -d '{"embeds": [{"title": "📝 Push to Branch", "description": "Branch: `${{ github.ref_name }}`\nCommit: `${{ github.commit_message }}`", "color": 3447003}]}' \
+          -d "{\"embeds\": [{\"title\": \"📝 Push to Branch\", \"description\": \"Branch: \\`${{ github.ref_name }}\\`\\nCommit: \\\"$MSG\\\"\", \"color\": 3447003}]}" \
           https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
