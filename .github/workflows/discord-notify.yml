@@ -13,11 +13,44 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup yq
+        if: github.event_name == 'create' && github.event.ref_type == 'branch'
         run: |
           wget https://github.com/mikefarah/yq/releases/download/v4.35.2/yq_linux_amd64 -O /usr/local/bin/yq
           chmod +x /usr/local/bin/yq
+
+      - name: Detect skills changes
+        id: skills
+        run: |
+          SKILLS_CHANGED=$(git diff --name-only HEAD~1 HEAD -- '.opencode/skills/**' 2>/dev/null | grep -v '\.gitignore' || true)
+
+          if [ -z "$SKILLS_CHANGED" ]; then
+            echo "has_skills=false" >> $GITHUB_OUTPUT
+            echo "skills_json=[]" >> $GITHUB_OUTPUT
+          else
+            echo "has_skills=true" >> $GITHUB_OUTPUT
+
+            # Build JSON array of skill names
+            SKILLS_JSON="["
+            FIRST=true
+            for skill in $SKILLS_CHANGED; do
+              SKILL_NAME=$(echo "$skill" | sed 's|.opencode/skills/||' | sed 's|/SKILL.md||' | sed 's|/.*||')
+              if [ "$FIRST" = true ]; then
+                FIRST=false
+              else
+                SKILLS_JSON="$SKILLS_JSON,"
+              fi
+              SKILLS_JSON="$SKILLS_JSON\"$SKILL_NAME\""
+            done
+            SKILLS_JSON="$SKILLS_JSON]"
+            echo "skills_json=$SKILLS_JSON" >> $GITHUB_OUTPUT
+
+            echo "Skills changed:"
+            echo "$SKILLS_CHANGED"
+          fi
 
       - name: Send notification - New branch created
         if: github.event_name == 'create' && github.event.ref_type == 'branch'
@@ -26,8 +59,55 @@ jobs:
           -d '{"embeds": [{"title": "🌿 New Branch Created", "description": "Branch: `${{ github.event.ref }}`", "color": 3447003}]}' \
           https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
 
-      - name: Send notification - Push to main
-        if: github.ref == 'refs/heads/main'
+      - name: Send notification - Skill Added
+        if: github.ref == 'refs/heads/main' && steps.skills.outputs.has_skills == 'true'
+        run: |
+          MSG=$(git log -1 --format='%s')
+          AUTHOR=$(git log -1 --format='%an')
+          TIMESTAMP=$(git log -1 --format='%cI')
+          REPO="${{ github.repository }}"
+          COMMIT_SHA="${{ github.sha }}"
+          SKILLS_JSON="${{ steps.skills.outputs.skills_json }}"
+
+          # Escape special characters
+          ESCAPED_MSG=$(echo "$MSG" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+          ESCAPED_AUTHOR=$(echo "$AUTHOR" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+          ESCAPED_REPO=$(echo "$REPO" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+
+          # Create JSON payload
+          cat > payload.json << 'JSONEOF'
+          {
+            "embeds": [{
+              "title": "🆕 New Skill Added",
+              "color": 3447003,
+              "description": "A new skill has been added to the repository",
+              "fields": [
+                {"name": "Repository", "value": "REPO_VAL", "inline": true},
+                {"name": "Author", "value": "AUTHOR_VAL", "inline": true},
+                {"name": "Skill(s) Added", "value": "SKILLS_VAL"},
+                {"name": "Commit Message", "value": "MSG_VAL"}
+              ],
+              "url": "https://github.com/REPO_VAL/commit/SHA_VAL",
+              "footer": {"text": "OpenAgents CI"},
+              "timestamp": "TS_VAL"
+            }]
+          }
+          JSONEOF
+
+          sed -i "s/REPO_VAL/$ESCAPED_REPO/g" payload.json
+          sed -i "s/AUTHOR_VAL/$ESCAPED_AUTHOR/g" payload.json
+          sed -i "s/SKILLS_VAL/$SKILLS_JSON/g" payload.json
+          sed -i "s/MSG_VAL/$ESCAPED_MSG/g" payload.json
+          sed -i "s/SHA_VAL/$COMMIT_SHA/g" payload.json
+          sed -i "s/TS_VAL/$TIMESTAMP/g" payload.json
+
+          curl -X POST -H "Content-Type: application/json" -d @payload.json \
+          https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
+
+          rm payload.json
+
+      - name: Send notification - Push to main (non-skill)
+        if: github.ref == 'refs/heads/main' && steps.skills.outputs.has_skills == 'false'
         run: |
           MSG=$(git log -1 --format='%s')
           AUTHOR=$(git log -1 --format='%an')
