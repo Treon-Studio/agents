@@ -30,14 +30,18 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           MSG=$(git log -1 --format='%s')
+          AUTHOR=$(git log -1 --format='%an')
+          TIMESTAMP=$(git log -1 --format='%cI')
           curl -X POST -H "Content-Type: application/json" \
-          -d "{\"embeds\": [{\"title\": \"📦 Push to Main\", \"description\": \"Commit: \\\"$MSG\\\"\", \"color\": 3066993}]}" \
+          -d "{\"embeds\": [{\"title\": \"📦 Push to Main\", \"description\": \"Commit: \\\"$MSG\\\"\\nAuthor: $AUTHOR\", \"color\": 3066993, \"timestamp\": \"$TIMESTAMP\"}]}" \
           https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
 
       - name: Send notification - Push to branch
         if: github.event_name == 'push' && github.ref != 'refs/heads/main'
         run: |
           MSG=$(git log -1 --format='%s')
+          AUTHOR=$(git log -1 --format='%an')
+          TIMESTAMP=$(git log -1 --format='%cI')
           curl -X POST -H "Content-Type: application/json" \
-          -d "{\"embeds\": [{\"title\": \"📝 Push to Branch\", \"description\": \"Branch: \\`${{ github.ref_name }}\\`\\nCommit: \\\"$MSG\\\"\", \"color\": 3447003}]}" \
+          -d "{\"embeds\": [{\"title\": \"📝 Push to Branch\", \"description\": \"Branch: \\`${{ github.ref_name }}\\`\\nCommit: \\\"$MSG\\\"\\nAuthor: $AUTHOR\", \"color\": 3447003, \"timestamp\": \"$TIMESTAMP\"}]}" \
           https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
