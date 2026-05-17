@@ -16,11 +16,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup yq
-        if: github.event_name == 'create' && github.event.ref_type == 'branch'
-        run: |
-          wget https://github.com/mikefarah/yq/releases/download/v4.35.2/yq_linux_amd64 -O /usr/local/bin/yq
-          chmod +x /usr/local/bin/yq
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Detect skills changes
         id: skills
@@ -69,10 +66,10 @@ jobs:
           COMMIT_SHA="${{ github.sha }}"
           SKILLS_JSON="${{ steps.skills.outputs.skills_json }}"
 
-          # Escape special characters
-          ESCAPED_MSG=$(echo "$MSG" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-          ESCAPED_AUTHOR=$(echo "$AUTHOR" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
-          ESCAPED_REPO=$(echo "$REPO" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+          # Escape special characters using different delimiter
+          ESCAPED_MSG=$(echo "$MSG" | sed 's|\\|\\\\|g' | sed 's|"|\\"|g' | sed ':a;N;$!ba;s|\n|\\n|g')
+          ESCAPED_AUTHOR=$(echo "$AUTHOR" | sed 's|\\|\\\\|g' | sed 's|"|\\"|g')
+          ESCAPED_REPO=$(echo "$REPO" | sed 's|\\|\\\\|g' | sed 's|"|\\"|g')
 
           # Create JSON payload
           cat > payload.json << 'JSONEOF'
@@ -112,8 +109,14 @@ jobs:
           MSG=$(git log -1 --format='%s')
           AUTHOR=$(git log -1 --format='%an')
           TIMESTAMP=$(git log -1 --format='%cI')
+          # Use jq to build JSON safely
           curl -X POST -H "Content-Type: application/json" \
-          -d "{\"embeds\": [{\"title\": \"📦 Push to Main\", \"description\": \"Commit: \\\"$MSG\\\"\\nAuthor: $AUTHOR\", \"color\": 3066993, \"timestamp\": \"$TIMESTAMP\"}]}" \
+          -d "$(jq -n \
+            --arg title "📦 Push to Main" \
+            --arg desc "Commit: $MSG\nAuthor: $AUTHOR" \
+            --arg color "3066993" \
+            --arg ts "$TIMESTAMP" \
+            '{embeds: [{title: $title, description: $desc, color: ($color | tonumber), timestamp: $ts}]}')" \
           https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
 
       - name: Send notification - Push to branch
@@ -122,6 +125,13 @@ jobs:
           MSG=$(git log -1 --format='%s')
           AUTHOR=$(git log -1 --format='%an')
           TIMESTAMP=$(git log -1 --format='%cI')
+          BRANCH="${{ github.ref_name }}"
+          # Use jq to build JSON safely
           curl -X POST -H "Content-Type: application/json" \
-          -d "{\"embeds\": [{\"title\": \"📝 Push to Branch\", \"description\": \"Branch: \\`${{ github.ref_name }}\\`\\nCommit: \\\"$MSG\\\"\\nAuthor: $AUTHOR\", \"color\": 3447003, \"timestamp\": \"$TIMESTAMP\"}]}" \
+          -d "$(jq -n \
+            --arg title "📝 Push to Branch" \
+            --arg desc "Branch: \`$BRANCH\`\nCommit: $MSG\nAuthor: $AUTHOR" \
+            --arg color "3447003" \
+            --arg ts "$TIMESTAMP" \
+            '{embeds: [{title: $title, description: $desc, color: ($color | tonumber), timestamp: $ts}]}')" \
           https://discord.com/api/webhooks/1502909275562053692/luKXCHFSA5F6Ifv4kCkSlsF4iXlbmOtdubVffvKj90ZJeebVl78oPjimY38p3H3R-u9m
