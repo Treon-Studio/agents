@@ -1,0 +1,26 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev src/index.ts --port 8787",
+    "deploy": "wrangler deploy src/index.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "seed": "wrangler dev src/seed.ts --port 8788"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20250401.0",
+    "hono": "^4.7.11",
+    "drizzle-orm": "^0.39.3",
+    "drizzle-kit": "^0.30.5",
+    "zod": "^3.24.2",
+    "nanoid": "^5.1.5"
+  },
+  "devDependencies": {
+    "wrangler": "^4.14.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,319 @@
+---
+import BaseLayout from "@/layouts/Base.astro";
+import { getAllSkills } from "@/utils/skills";
+
+const page = Number(Astro.url.searchParams.get("page")) || 1;
+const categoryParam = Astro.url.searchParams.get("category") as string | null;
+
+const params: { category?: string; page: number } = { page };
+if (categoryParam) params.category = categoryParam;
+
+const initialData = await getAllSkills(params);
+const skills = initialData.data;
+const totalSkills = initialData.meta?.total || 0;
+const lastPage = initialData.meta?.lastPage || 1;
+
+const prevPage = page > 1 ? page - 1 : null;
+const nextPage = page < lastPage ? page + 1 : null;
+
+const API_BASE = "http://localhost:8787/api/v1";
+---
+
+<BaseLayout meta={{ title: "Skills Leaderboard", description: "Browse all available skills" }}>
+	<div class="mb-8">
+		<div class="search-container">
+			<input
+				type="text"
+				class="search-input"
+				id="search"
+				placeholder="Search skills..."
+				autocomplete="off"
+				data-api={API_BASE}
+			/>
+			<span class="search-shortcut">/</span>
+		</div>
+	</div>
+
+	<div class="tabs">
+		<button class="tab active" data-tab="all">
+			All Time <span class="tab-count">({totalSkills.toLocaleString()})</span>
+		</button>
+		<button class="tab" data-tab="trending">
+			Trending <span class="tab-count">(24h)</span>
+		</button>
+		<button class="tab" data-tab="hot">
+			Hot <span class="tab-count">(142)</span>
+		</button>
+	</div>
+
+	<div class="table-header">
+		<span>#</span>
+		<span>SKILL</span>
+		<span style="text-align: right">INSTALLS</span>
+	</div>
+
+	<div class="table-body" id="leaderboard">
+		{skills.map((skill, idx) => (
+			<a
+				href={`/skills/${skill.id}/`}
+				class="row"
+				data-name={skill.title.toLowerCase()}
+				data-category={skill.category.toLowerCase()}
+			>
+				<span class="rank">{idx + 1}</span>
+				<div class="skill-info">
+					<span class="skill-name">{skill.title}</span>
+					<span class="namespace">{skill.author}</span>
+				</div>
+				<div class="installs">
+					<svg class="sync-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+						<path d="M21 3v5h-5"/>
+					</svg>
+					<span class="install-count" data-value={skill.installs}></span>
+				</div>
+			</a>
+		))}
+	</div>
+
+	<div class="pagination">
+		<a
+			href={`/skills/?page=${prevPage}${categoryParam ? `&category=${categoryParam}` : ""}`}
+			class={`page-link ${!prevPage ? "disabled" : ""}`}
+		>
+			← Previous
+		</a>
+		<span class="page-info">Page {page} of {lastPage}</span>
+		<a
+			href={`/skills/?page=${nextPage}${categoryParam ? `&category=${categoryParam}` : ""}`}
+			class={`page-link ${!nextPage ? "disabled" : ""}`}
+		>
+			Next →
+		</a>
+	</div>
+</BaseLayout>
+
+<style>
+	.search-container {
+		position: relative;
+		margin-bottom: 24px;
+	}
+
+	.search-input {
+		width: 100%;
+		background: var(--color-global-bg);
+		border: 1px solid #2a2a2a;
+		color: var(--color-global-text);
+		font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+		font-size: 14px;
+		padding: 12px 50px 12px 16px;
+		outline: none;
+		border-radius: 0;
+		transition: border-color 0.2s;
+	}
+
+	.search-input::placeholder {
+		color: #555;
+	}
+
+	.search-input:focus {
+		border-color: var(--color-accent);
+	}
+
+	.search-shortcut {
+		position: absolute;
+		right: 14px;
+		top: 50%;
+		transform: translateY(-50%);
+		color: #555;
+		font-size: 12px;
+		pointer-events: none;
+	}
+
+	.tabs {
+		display: flex;
+		gap: 24px;
+		border-bottom: 1px solid #1c1c1c;
+		margin-bottom: 0;
+	}
+
+	.tab {
+		background: none;
+		border: none;
+		color: #555;
+		font-family: inherit;
+		font-size: 12px;
+		font-weight: 500;
+		padding: 12px 0;
+		cursor: pointer;
+		position: relative;
+		transition: color 0.2s;
+	}
+
+	.tab:hover {
+		color: var(--color-global-text);
+	}
+
+	.tab.active {
+		color: var(--color-global-text);
+	}
+
+	.tab.active::after {
+		content: "";
+		position: absolute;
+		bottom: -1px;
+		left: 0;
+		right: 0;
+		height: 2px;
+		background: var(--color-accent);
+	}
+
+	.tab-count {
+		color: #444;
+		margin-left: 6px;
+	}
+
+	.table-header {
+		display: grid;
+		grid-template-columns: 50px 1fr 120px;
+		padding: 12px 0;
+		border-bottom: 1px solid #1c1c1c;
+		font-size: 10px;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: #555;
+	}
+
+	.table-header span:last-child {
+		text-align: right;
+	}
+
+	.table-body {
+		font-size: 13px;
+	}
+
+	.row {
+		display: grid;
+		grid-template-columns: 50px 1fr 120px;
+		padding: 14px 0;
+		border-bottom: 1px solid #1c1c1c;
+		align-items: center;
+		transition: background-color 0.15s;
+		text-decoration: none;
+		color: inherit;
+	}
+
+	.row:hover {
+		background: #111;
+	}
+
+	.rank {
+		color: #555;
+		font-size: 12px;
+	}
+
+	.skill-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.skill-name {
+		color: #fff;
+		font-weight: 700;
+	}
+
+	.namespace {
+		color: #444;
+		font-size: 11px;
+	}
+
+	.installs {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 6px;
+		color: #888;
+		font-size: 12px;
+	}
+
+	.sync-icon {
+		width: 12px;
+		height: 12px;
+		color: #444;
+		flex-shrink: 0;
+	}
+
+	.pagination {
+		display: flex;
+		justify-content: center;
+		gap: 24px;
+		padding: 24px 0;
+		border-bottom: 1px solid #1c1c1c;
+	}
+
+	.page-link {
+		color: #555;
+		font-size: 12px;
+		text-decoration: none;
+		transition: color 0.15s;
+	}
+
+	.page-link:hover {
+		color: var(--color-accent);
+	}
+
+	.page-link.disabled {
+		color: #333;
+		pointer-events: none;
+	}
+
+	.page-info {
+		color: #444;
+		font-size: 12px;
+	}
+</style>
+
+<script>
+	function formatInstalls(num: number): string {
+		if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+		if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+		return num.toString();
+	}
+
+	document.querySelectorAll(".install-count").forEach((el) => {
+		const value = el.getAttribute("data-value");
+		if (value) {
+			el.textContent = formatInstalls(parseInt(value));
+		}
+	});
+
+	const searchInput = document.getElementById("search") as HTMLInputElement;
+	const rows = document.querySelectorAll(".row");
+
+	searchInput?.addEventListener("input", (e) => {
+		const filter = (e.target as HTMLInputElement).value.toLowerCase();
+
+		rows.forEach((row) => {
+			const name = row.getAttribute("data-name") || "";
+			const category = row.getAttribute("data-category") || "";
+			const match = name.includes(filter) || category.includes(filter);
+			(row as HTMLElement).style.display = match ? "" : "none";
+		});
+	});
+
+	document.addEventListener("keydown", (e) => {
+		if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
+			e.preventDefault();
+			searchInput?.focus();
+		}
+	});
+
+	document.querySelectorAll(".tab").forEach((tab) => {
+		tab.addEventListener("click", () => {
+			document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+			tab.classList.add("active");
+		});
+	});
+</script>

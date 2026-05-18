@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Skills Leaderboard | Treon</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			background: #0a0a0a;
+			color: #e8e8e8;
+			font-family: "JetBrains Mono", "Fira Code", "SF Mono", Monaco, Consolas, monospace;
+			min-height: 100vh;
+			padding: 48px 24px;
+		}
+
+		.container {
+			max-width: 900px;
+			margin: 0 auto;
+		}
+
+		.header {
+			margin-bottom: 32px;
+		}
+
+		.title {
+			font-size: 12px;
+			font-weight: 500;
+			letter-spacing: 0.15em;
+			text-transform: uppercase;
+			color: #888;
+			margin-bottom: 20px;
+		}
+
+		.search-container {
+			position: relative;
+			margin-bottom: 24px;
+		}
+
+		.search-input {
+			width: 100%;
+			background: #111;
+			border: 1px solid #2a2a2a;
+			color: #e8e8e8;
+			font-family: inherit;
+			font-size: 14px;
+			padding: 12px 50px 12px 16px;
+			outline: none;
+			border-radius: 0;
+			transition: border-color 0.2s;
+		}
+
+		.search-input::placeholder {
+			color: #555;
+		}
+
+		.search-input:focus {
+			border-color: #444;
+		}
+
+		.search-shortcut {
+			position: absolute;
+			right: 14px;
+			top: 50%;
+			transform: translateY(-50%);
+			color: #555;
+			font-size: 12px;
+			pointer-events: none;
+		}
+
+		.tabs {
+			display: flex;
+			gap: 24px;
+			border-bottom: 1px solid #1c1c1c;
+			margin-bottom: 0;
+		}
+
+		.tab {
+			background: none;
+			border: none;
+			color: #555;
+			font-family: inherit;
+			font-size: 12px;
+			font-weight: 500;
+			padding: 12px 0;
+			cursor: pointer;
+			position: relative;
+			transition: color 0.2s;
+		}
+
+		.tab:hover {
+			color: #888;
+		}
+
+		.tab.active {
+			color: #e8e8e8;
+		}
+
+		.tab.active::after {
+			content: "";
+			position: absolute;
+			bottom: -1px;
+			left: 0;
+			right: 0;
+			height: 2px;
+			background: #e8e8e8;
+		}
+
+		.tab-count {
+			color: #444;
+			margin-left: 6px;
+		}
+
+		.table-header {
+			display: grid;
+			grid-template-columns: 50px 1fr 120px;
+			padding: 12px 0;
+			border-bottom: 1px solid #1c1c1c;
+			font-size: 10px;
+			font-weight: 500;
+			letter-spacing: 0.1em;
+			text-transform: uppercase;
+			color: #555;
+		}
+
+		.table-header span:last-child {
+			text-align: right;
+		}
+
+		.table-body {
+			font-size: 13px;
+		}
+
+		.row {
+			display: grid;
+			grid-template-columns: 50px 1fr 120px;
+			padding: 14px 0;
+			border-bottom: 1px solid #1c1c1c;
+			align-items: center;
+			transition: background-color 0.15s;
+		}
+
+		.row:hover {
+			background: #111;
+		}
+
+		.rank {
+			color: #555;
+			font-size: 12px;
+		}
+
+		.skill-info {
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+		}
+
+		.skill-name {
+			color: #fff;
+			font-weight: 700;
+		}
+
+		.namespace {
+			color: #444;
+			font-size: 11px;
+		}
+
+		.installs {
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			gap: 6px;
+			color: #e8e8e8;
+		}
+
+		.sync-icon {
+			width: 12px;
+			height: 12px;
+			color: #444;
+		}
+
+		.more-row {
+			display: block;
+			padding: 10px 0;
+			border-bottom: 1px solid #1c1c1c;
+			color: #555;
+			font-size: 12px;
+			font-style: italic;
+			cursor: pointer;
+			transition: color 0.15s;
+		}
+
+		.more-row:hover {
+			color: #888;
+		}
+
+		.more-row .arrow {
+			display: inline-block;
+			transition: transform 0.2s;
+		}
+
+		.more-row.expanded .arrow {
+			transform: rotate(90deg);
+		}
+
+		.hidden {
+			display: none !important;
+		}
+
+		.no-results {
+			padding: 48px 0;
+			text-align: center;
+			color: #555;
+			font-size: 13px;
+		}
+
+		.sync-icon {
+			flex-shrink: 0;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<header class="header">
+			<h1 class="title">Skills Leaderboard</h1>
+			<div class="search-container">
+				<input
+					type="text"
+					class="search-input"
+					id="search"
+					placeholder="Search skills..."
+					autocomplete="off"
+				/>
+				<span class="search-shortcut">/</span>
+			</div>
+		</header>
+
+		<div class="tabs">
+			<button class="tab active" data-tab="all">
+				All Time <span class="tab-count">(388,272)</span>
+			</button>
+			<button class="tab" data-tab="trending">
+				Trending <span class="tab-count">(24h)</span>
+			</button>
+			<button class="tab" data-tab="hot">
+				Hot <span class="tab-count">(142)</span>
+			</button>
+		</div>
+
+		<div class="table-header">
+			<span>#</span>
+			<span>SKILL</span>
+			<span>INSTALLS</span>
+		</div>
+
+		<div class="table-body" id="leaderboard"></div>
+	</div>
+
+	<script>
+		const data = [
+			{ rank: 1, name: "find-skills", ns: "vercel-labs/skills", installs: 1600000 },
+			{ rank: 2, name: "frontend-design", ns: "anthropics/skills", installs: 422600 },
+			{ rank: 3, name: "vercel-react-best-practices", ns: "vercel-labs/agent-skills", installs: 405400 },
+			{ rank: 4, name: "web-design-guidelines", ns: "vercel-labs/agent-skills", installs: 325000 },
+			{ rank: 5, name: "microsoft-foundry", ns: "microsoft/azure-skills", installs: 323800 },
+			{ rank: 6, name: "azure-devops", ns: "microsoft/azure-skills", installs: 310000 },
+			{ rank: 7, name: "azure-openai-sdk", ns: "microsoft/azure-skills", installs: 290000 },
+			{ rank: 8, name: "remotion-best-practices", ns: "remotion-dev/skills", installs: 314500 },
+			{ rank: 9, name: "azure-messaging", ns: "microsoft/azure-skills", installs: 311100 },
+			{ rank: 10, name: "azure-hosted-copilot-sdk", ns: "microsoft/azure-skills", installs: 294600 },
+			{ rank: 11, name: "agent-browser", ns: "vercel-labs/agent-browser", installs: 280500 },
+			{ rank: 12, name: "azure-compute", ns: "microsoft/azure-skills", installs: 265500 },
+		];
+
+		const groupedData = {
+			"microsoft/azure-skills": data.filter((d) => d.ns === "microsoft/azure-skills"),
+		};
+
+		const groupedNS = new Set(Object.keys(groupedData));
+		const shownRanks = new Set([1, 2, 3, 4, 5, 8, 11]);
+
+		let expandedGroups = new Set();
+		let currentFilter = "";
+
+		function formatNumber(num) {
+			if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+			if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+			return num.toString();
+		}
+
+		function animateNumber(el, target) {
+			const duration = 600;
+			const startTime = performance.now();
+
+			function update(currentTime) {
+				const elapsed = currentTime - startTime;
+				const progress = Math.min(elapsed / duration, 1);
+				const eased = 1 - Math.pow(1 - progress, 3);
+				const current = Math.floor(target * eased);
+				el.textContent = formatNumber(current);
+
+				if (progress < 1) {
+					requestAnimationFrame(update);
+				} else {
+					el.textContent = formatNumber(target);
+				}
+			}
+
+			requestAnimationFrame(update);
+		}
+
+		function render() {
+			const tbody = document.getElementById("leaderboard");
+			if (!tbody) return;
+
+			let filtered = data;
+
+			if (currentFilter) {
+				const filter = currentFilter.toLowerCase();
+				filtered = data.filter(
+					(d) =>
+						d.name.toLowerCase().includes(filter) ||
+						d.ns.toLowerCase().includes(filter)
+				);
+			}
+
+			const visibleData = filtered.filter((d) => shownRanks.has(d.rank));
+			let html = "";
+			let rankCounter = 1;
+
+			visibleData.forEach((item) => {
+				const isGroup = groupedNS.has(item.ns);
+				const groupItems = groupedData[item.ns] || [];
+				const groupTotal = groupItems.reduce((sum, d) => sum + d.installs, 0);
+				const hiddenCount = groupItems.length - 1;
+				const isExpanded = expandedGroups.has(item.ns);
+
+				html += `
+					<div class="row" data-rank="${item.rank}">
+						<span class="rank">${rankCounter}</span>
+						<div class="skill-info">
+							<span class="skill-name">${item.name}</span>
+							<span class="namespace">${item.ns}</span>
+						</div>
+						<div class="installs">
+							<svg class="sync-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+								<path d="M21 3v5h-5"/>
+							</svg>
+							<span class="install-count" data-target="${item.installs}">${formatNumber(item.installs)}</span>
+						</div>
+					</div>
+				`;
+
+				if (isGroup && !isExpanded) {
+					html += `
+						<div class="more-row" data-group="${item.ns}">
+							<span class="arrow">›</span> +${hiddenCount} more from ${item.ns} (${formatNumber(groupTotal)} total)
+						</div>
+					`;
+				}
+
+				if (isGroup && isExpanded) {
+					groupItems.forEach((groupItem, idx) => {
+						if (groupItem.rank === item.rank) return;
+
+						const matchesFilter = !currentFilter ||
+							groupItem.name.toLowerCase().includes(currentFilter.toLowerCase()) ||
+							groupItem.ns.toLowerCase().includes(currentFilter.toLowerCase());
+
+						if (!matchesFilter) return;
+
+						html += `
+							<div class="row" data-rank="${groupItem.rank}">
+								<span class="rank">${rankCounter + idx + 1}</span>
+								<div class="skill-info">
+									<span class="skill-name">${groupItem.name}</span>
+									<span class="namespace">${groupItem.ns}</span>
+								</div>
+								<div class="installs">
+									<svg class="sync-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+										<path d="M21 3v5h-5"/>
+									</svg>
+									<span class="install-count" data-target="${groupItem.installs}">${formatNumber(groupItem.installs)}</span>
+								</div>
+							</div>
+						`;
+					});
+				}
+
+				rankCounter++;
+			});
+
+			if (filtered.length === 0) {
+				html = '<div class="no-results">No skills found matching your search.</div>';
+			}
+
+			tbody.innerHTML = html;
+
+			document.querySelectorAll(".install-count").forEach((el) => {
+				const target = parseInt(el.dataset.target || "0", 10);
+				animateNumber(el, target);
+			});
+
+			document.querySelectorAll(".more-row").forEach((row) => {
+				row.addEventListener("click", () => {
+					const ns = row.dataset.group;
+					if (expandedGroups.has(ns)) {
+						expandedGroups.delete(ns);
+					} else {
+						expandedGroups.add(ns);
+					}
+					render();
+				});
+			});
+		}
+
+		document.getElementById("search")?.addEventListener("input", (e) => {
+			currentFilter = e.target.value;
+			render();
+		});
+
+		document.querySelectorAll(".tab").forEach((tab) => {
+			tab.addEventListener("click", () => {
+				document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+				tab.classList.add("active");
+			});
+		});
+
+		document.addEventListener("keydown", (e) => {
+			if (e.key === "/" && document.activeElement.tagName !== "INPUT") {
+				e.preventDefault();
+				document.getElementById("search")?.focus();
+			}
+		});
+
+		render();
+	</script>
+</body>
+</html>

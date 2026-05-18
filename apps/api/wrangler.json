@@ -1,0 +1,6 @@
+{
+  "name": "api",
+  "main": "src/index.ts",
+  "compatibilityDate": "2024-12-01",
+  "platform": "workers"
+}

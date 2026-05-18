@@ -1,0 +1,24 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { Icon } from "astro-icon/components";
+import SkillCard from "./SkillCard.astro";
+
+interface Props {
+	skills: CollectionEntry<"skill">[];
+}
+
+const { skills } = Astro.props;
+---
+
+<section class="mb-12">
+	<div class="mb-6 flex items-center gap-3">
+		<Icon class="h-6 w-6 text-accent" name="mdi:star" />
+		<h2 class="title text-2xl">Featured Skills</h2>
+	</div>
+
+	<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+		{skills.map((skill) => (
+			<SkillCard skill={skill} />
+		))}
+	</div>
+</section>

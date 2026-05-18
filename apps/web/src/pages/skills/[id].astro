@@ -1,0 +1,511 @@
+---
+import BaseLayout from "@/layouts/Base.astro";
+import { getAllSkills, getSkillById, formatInstalls } from "@/utils/skills";
+
+export const prerender = false;
+
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect("/skills/");
+}
+
+const skill = await getSkillById(id);
+
+if (!skill) {
+  return Astro.redirect("/skills/");
+}
+
+const allSkillsResponse = await getAllSkills({ category: skill.category });
+const relatedSkills = allSkillsResponse.data
+  .filter((s) => s.id !== skill.id)
+  .slice(0, 5);
+
+const categoryLabels: Record<string, string> = {
+  design: "Design",
+  engineering: "Engineering",
+  data: "Data",
+  writing: "Writing",
+  product: "Product",
+  business: "Business",
+  education: "Education",
+  science: "Science",
+  ai: "AI",
+  community: "Community",
+};
+
+const installCommand = `npx skills add ${skill.skillUrl} --skill "${skill.title}"`;
+---
+
+<BaseLayout meta={{ title: skill.title, description: skill.description, ogImage: undefined }}>
+  <div class="skill-detail">
+    <nav class="breadcrumb">
+      <a href="/skills/">skills</a>
+      <span>/</span>
+      <span>{skill.author.toLowerCase().replace(/\s+/g, "-")}</span>
+      <span>/</span>
+      <span>{skill.title}</span>
+    </nav>
+
+    <h1 class="hero-title">{skill.title}</h1>
+    <span class="pill-tag">{categoryLabels[skill.category]}</span>
+
+    <div class="stats-bar">
+      <div class="stat-block">
+        <span class="stat-label">INSTALLS</span>
+        <span class="stat-value-lg">{formatInstalls(skill.installs)}</span>
+      </div>
+      <div class="stat-block">
+        <span class="stat-label">REPOSITORY</span>
+        <span class="stat-value">
+          <svg class="verified-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          {skill.author}
+        </span>
+      </div>
+      <div class="stat-block">
+        <span class="stat-label">GITHUB STARS</span>
+        <span class="stat-value">☆ {formatInstalls(skill.stars)}</span>
+      </div>
+      <div class="stat-block">
+        <span class="stat-label">FIRST SEEN</span>
+        <span class="stat-value">{new Date(skill.publishDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}</span>
+      </div>
+    </div>
+
+    <div class="security-row">
+      <span class="security-label">SECURITY AUDITS</span>
+      <div class="audit-items">
+        <span class="audit-item">
+          Gen Agent Trust Hub
+          <span class="badge badge-pass">PASS</span>
+        </span>
+        <span class="audit-item">
+          Socket
+          <span class="badge badge-pass">PASS</span>
+        </span>
+        <span class="audit-item">
+          Snyk
+          <span class="badge badge-warn">WARN</span>
+        </span>
+      </div>
+    </div>
+
+    <section class="section">
+      <h2 class="section-label">INSTALLATION</h2>
+      <div class="code-block">
+        <code>$ {installCommand}</code>
+        <button class="copy-btn" data-copy={installCommand}>
+          <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-label">SUMMARY</h2>
+      <div class="summary-box">
+        <p>{skill.description}</p>
+      </div>
+    </section>
+
+    <div class="skill-md-header">
+      <span class="skill-md-label">SKILL.MD</span>
+    </div>
+
+    <div class="markdown-wrapper expanded">
+      <div class="markdown-content">
+        <h1>Overview</h1>
+        <p>{skill.description}</p>
+        <h2>When to Use</h2>
+        <p>Use this skill when you need to {skill.title.toLowerCase().replace(/-/g, " ")} capabilities in your workflow.</p>
+        <h2>Key Features</h2>
+        <ul>
+          <li>Easy integration with existing workflows</li>
+          <li>Comprehensive documentation and examples</li>
+          <li>Regular updates and community support</li>
+          <li>Compatible with major AI platforms</li>
+        </ul>
+      </div>
+    </div>
+
+    {relatedSkills.length > 0 && (
+      <section class="section related-section">
+        <h2 class="section-label">RELATED SKILLS</h2>
+        <span class="more-in-label">MORE IN</span>
+        <span class="pill-tag">{categoryLabels[skill.category]}</span>
+        <div class="related-list">
+          {relatedSkills.map((s) => (
+            <a href={`/skills/${s.id}/`} class="related-row">
+              <div class="related-info">
+                <span class="related-name">{s.title}</span>
+                <span class="related-ns">{s.author}</span>
+              </div>
+              <span class="related-desc">{s.description}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .skill-detail {
+    max-width: 648px;
+    margin: 0 auto;
+  }
+
+  .breadcrumb {
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .breadcrumb a {
+    color: #666;
+    text-decoration: none;
+  }
+
+  .breadcrumb a:hover {
+    color: #888;
+    text-decoration: underline;
+  }
+
+  .hero-title {
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    font-weight: 700;
+    color: #f0f0f0;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+
+  .pill-tag {
+    display: inline-block;
+    border: 1px solid #333;
+    color: #aaa;
+    padding: 3px 10px;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    margin-bottom: 32px;
+  }
+
+  .stats-bar {
+    background: #141414;
+    border: 1px solid #1e1e1e;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 479px) {
+    .stats-bar {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .stat-block {
+    padding: 0 16px;
+    border-right: 1px solid #1e1e1e;
+  }
+
+  .stat-block:first-child {
+    padding-left: 0;
+  }
+
+  .stat-block:last-child {
+    border-right: none;
+  }
+
+  @media (max-width: 479px) {
+    .stat-block:nth-child(2) {
+      border-right: none;
+    }
+
+    .stat-block:nth-child(3),
+    .stat-block:nth-child(4) {
+      padding-top: 16px;
+    }
+  }
+
+  .stat-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e8e8e8;
+  }
+
+  .stat-value-lg {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #f0f0f0;
+  }
+
+  .verified-icon {
+    width: 14px;
+    height: 14px;
+    color: #4ade80;
+    flex-shrink: 0;
+  }
+
+  .security-row {
+    border-bottom: 1px solid #1e1e1e;
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+  }
+
+  .security-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 12px;
+  }
+
+  .audit-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .audit-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #888;
+  }
+
+  .badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 2px 7px;
+    border-radius: 3px;
+  }
+
+  .badge-pass {
+    background: #0f2a0f;
+    color: #4ade80;
+  }
+
+  .badge-warn {
+    background: #2e2200;
+    color: #facc15;
+  }
+
+  .section {
+    margin-bottom: 32px;
+  }
+
+  .section-label {
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 10px;
+  }
+
+  .code-block {
+    background: #111;
+    border: 1px solid #222;
+    padding: 18px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .code-block code {
+    color: #c8d8b8;
+    font-size: 0.83rem;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+
+  .copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    color: #555;
+    transition: color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .copy-btn:hover {
+    color: #e8e8e8;
+  }
+
+  .copy-icon,
+  .check-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .check-icon {
+    display: none;
+    color: #4ade80;
+  }
+
+  .copy-btn.copied .copy-icon {
+    display: none;
+  }
+
+  .copy-btn.copied .check-icon {
+    display: block;
+  }
+
+  .summary-box {
+    background: #141414;
+    border: 1px solid #252525;
+    padding: 20px 22px;
+  }
+
+  .summary-box p {
+    color: #c0c0c0;
+    line-height: 1.7;
+    font-size: 0.88rem;
+  }
+
+  .skill-md-header {
+    border-top: 1px solid #1e1e1e;
+    padding-top: 16px;
+    margin-bottom: 24px;
+  }
+
+  .skill-md-label {
+    display: block;
+    font-size: 0.68rem;
+    color: #444;
+    margin-bottom: 8px;
+  }
+
+  .markdown-wrapper {
+    position: relative;
+  }
+
+  .markdown-content {
+    color: #a0a0a0;
+    font-size: 0.88rem;
+    line-height: 1.8;
+  }
+
+  .markdown-content h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #f0f0f0;
+    margin: 24px 0 12px;
+  }
+
+  .markdown-content h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #f0f0f0;
+    margin: 24px 0 12px;
+  }
+
+  .markdown-content p {
+    margin-bottom: 16px;
+  }
+
+  .markdown-content ul {
+    margin: 16px 0;
+    padding-left: 20px;
+  }
+
+  .markdown-content li {
+    margin-bottom: 8px;
+  }
+
+  .related-section {
+    border-top: 1px solid #1e1e1e;
+    padding-top: 24px;
+    margin-top: 32px;
+  }
+
+  .more-in-label {
+    font-size: 0.7rem;
+    color: #555;
+    margin-right: 8px;
+  }
+
+  .related-list {
+    margin-top: 16px;
+  }
+
+  .related-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 0;
+    border-bottom: 1px solid #181818;
+    text-decoration: none;
+    color: inherit;
+    transition: background-color 0.15s;
+  }
+
+  .related-row:hover {
+    background: #111;
+  }
+
+  .related-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .related-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #e8e8e8;
+  }
+
+  .related-ns {
+    font-size: 0.75rem;
+    color: #555;
+  }
+
+  .related-desc {
+    font-size: 0.8rem;
+    color: #666;
+  }
+</style>
+
+<script>
+  document.querySelectorAll(".copy-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const text = btn.getAttribute("data-copy") || "";
+      navigator.clipboard.writeText(text);
+      btn.classList.add("copied");
+      setTimeout(() => btn.classList.remove("copied"), 1500);
+    });
+  });
+</script>

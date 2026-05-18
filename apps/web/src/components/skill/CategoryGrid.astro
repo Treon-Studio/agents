@@ -1,0 +1,62 @@
+---
+import { Icon } from "astro-icon/components";
+import type { CategoryMeta, SkillCategory } from "@/types";
+
+interface Props {
+	categories: CategoryMeta[];
+}
+
+const { categories } = Astro.props;
+
+const categoryIcons: Record<SkillCategory, string> = {
+	design: "mdi:palette",
+	engineering: "mdi:cog",
+	data: "mdi:database",
+	writing: "mdi:pen",
+	product: "mdi:package-variant",
+	business: "mdi:briefcase",
+	education: "mdi:school",
+	science: "mdi:flask",
+	ai: "mdi:robot",
+	community: "mdi:account-group",
+};
+
+const categoryLabels: Record<SkillCategory, string> = {
+	design: "Design",
+	engineering: "Engineering",
+	data: "Data",
+	writing: "Writing",
+	product: "Product",
+	business: "Business",
+	education: "Education",
+	science: "Science",
+	ai: "AI",
+	community: "Community",
+};
+
+const sortedCategories = [...categories].sort((a, b) => b.count - a.count);
+---
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+	{sortedCategories.map((cat) => (
+		<a
+			class="group relative flex flex-col rounded-lg border border-zinc-200 bg-global-bg p-6 transition-all hover:border-accent hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800/50"
+			href={`/skills/?category=${cat.slug}`}
+		>
+			<span class="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
+				<Icon class="h-6 w-6" name={categoryIcons[cat.slug] || "mdi:folder"} />
+			</span>
+
+			<h3 class="mb-1 text-lg font-bold">{categoryLabels[cat.slug]}</h3>
+
+			<p class="text-sm text-muted">
+				{cat.count} skill{cat.count !== 1 ? "s" : ""}
+			</p>
+
+			<div class="mt-4 flex items-center gap-1 text-sm font-semibold text-accent">
+				Browse
+				<Icon class="h-4 w-4 transition-transform group-hover:translate-x-1" name="mdi:arrow-right" />
+			</div>
+		</a>
+	))}
+</div>

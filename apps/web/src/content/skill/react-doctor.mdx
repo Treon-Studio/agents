@@ -1,0 +1,42 @@
+---
+title: "React Doctor"
+description: "Run React Doctor to detect regressions in security, performance, correctness, and architecture. Automatically identify issues and get actionable fix suggestions."
+category: engineering
+tags: [react, performance, security, audit]
+author: millionco
+authorUrl: https://million.dev
+skillUrl: https://www.ui-skills.com/skills/millionco/react-doctor
+featured: true
+publishDate: 2026-01-15
+---
+
+## Overview
+
+React Doctor is a powerful diagnostic tool that helps you maintain healthy React applications. It scans your codebase for common issues across four key areas:
+
+- **Security** - Detects potential vulnerabilities and insecure patterns
+- **Performance** - Identifies bottlenecks and optimization opportunities
+- **Correctness** - Catches bugs and anti-patterns in React usage
+- **Architecture** - Reviews component structure and code organization
+
+## Usage
+
+Simply run the command in your project directory:
+
+```bash
+npx @million/react-doctor
+```
+
+The tool will analyze your codebase and generate a detailed report with specific recommendations for each issue found.
+
+## Integration
+
+Add to your CI pipeline to catch issues before deployment:
+
+```json
+{
+  "scripts": {
+    "doctor": "react-doctor --ci"
+  }
+}
+```

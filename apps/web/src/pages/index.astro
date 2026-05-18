@@ -1,0 +1,186 @@
+---
+import PageLayout from "@/layouts/Base.astro";
+import { getFeaturedSkills, formatInstalls } from "@/utils/skills";
+
+const featuredSkills = (await getFeaturedSkills()).slice(0, 3);
+---
+
+<PageLayout meta={{ title: "Treon - AI Engineering" }}>
+	<section class="hero">
+		<span class="hero-tag">by treonstudio</span>
+		<h1 class="hero-title">Treon Agents</h1>
+		<p class="hero-subtitle">
+			Universal AI Skills Marketplace for Design, Engineering, Data, and more.
+		</p>
+		<div class="hero-actions">
+			<a href="/skills/" class="btn-primary">Explore Skills</a>
+			<a href="/categories/" class="btn-secondary">Browse Categories</a>
+		</div>
+	</section>
+
+	{
+		featuredSkills.length > 0 && (
+			<section class="section">
+				<h2 class="section-label">FEATURED SKILLS</h2>
+				<div class="skills-grid">
+					{featuredSkills.map((skill) => (
+						<a href={`/skills/${skill.id}/`} class="skill-card">
+							<span class="skill-category">{skill.category}</span>
+							<h3 class="skill-name">{skill.title}</h3>
+							<p class="skill-desc">{skill.description}</p>
+							<div class="skill-meta">
+								<span class="skill-author">{skill.author}</span>
+								<span class="skill-installs">{formatInstalls(skill.installs)} installs</span>
+							</div>
+						</a>
+					))}
+				</div>
+			</section>
+		)
+	}
+</PageLayout>
+
+<style>
+	.hero {
+		text-align: center;
+		padding: 48px 0 64px;
+	}
+
+	.hero-tag {
+		display: inline-block;
+		font-size: 0.7rem;
+		font-weight: 500;
+		letter-spacing: 0.15em;
+		text-transform: uppercase;
+		color: #555;
+		margin-bottom: 16px;
+	}
+
+	.hero-title {
+		font-size: clamp(2.5rem, 8vw, 4rem);
+		font-weight: 700;
+		color: #f0f0f0;
+		line-height: 1.1;
+		margin-bottom: 16px;
+		letter-spacing: -0.02em;
+	}
+
+	.hero-subtitle {
+		font-size: 1rem;
+		color: #888;
+		max-width: 480px;
+		margin: 0 auto 32px;
+		line-height: 1.6;
+	}
+
+	.hero-actions {
+		display: flex;
+		gap: 16px;
+		justify-content: center;
+		flex-wrap: wrap;
+	}
+
+	.btn-primary {
+		background: #e8e8e8;
+		color: #0a0a0a;
+		padding: 12px 24px;
+		font-size: 0.875rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition: opacity 0.15s;
+	}
+
+	.btn-primary:hover {
+		opacity: 0.85;
+	}
+
+	.btn-secondary {
+		background: transparent;
+		color: #e8e8e8;
+		padding: 12px 24px;
+		font-size: 0.875rem;
+		font-weight: 500;
+		text-decoration: none;
+		border: 1px solid #333;
+		transition: border-color 0.15s;
+	}
+
+	.btn-secondary:hover {
+		border-color: #555;
+	}
+
+	.section {
+		margin-bottom: 48px;
+	}
+
+	.section-label {
+		font-size: 0.68rem;
+		font-weight: 500;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: #555;
+		margin-bottom: 20px;
+	}
+
+	.skills-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		gap: 16px;
+	}
+
+	.skill-card {
+		display: flex;
+		flex-direction: column;
+		background: #141414;
+		border: 1px solid #1e1e1e;
+		padding: 20px;
+		text-decoration: none;
+		color: inherit;
+		transition: border-color 0.15s, background-color 0.15s;
+	}
+
+	.skill-card:hover {
+		border-color: #333;
+		background: #111;
+	}
+
+	.skill-category {
+		font-size: 0.65rem;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: #555;
+		margin-bottom: 8px;
+	}
+
+	.skill-name {
+		font-size: 1rem;
+		font-weight: 700;
+		color: #e8e8e8;
+		margin-bottom: 8px;
+	}
+
+	.skill-desc {
+		font-size: 0.8rem;
+		color: #666;
+		line-height: 1.5;
+		flex-grow: 1;
+		margin-bottom: 12px;
+	}
+
+	.skill-meta {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.skill-author {
+		font-size: 0.72rem;
+		color: #444;
+	}
+
+	.skill-installs {
+		font-size: 0.72rem;
+		color: #4ade80;
+	}
+</style>
